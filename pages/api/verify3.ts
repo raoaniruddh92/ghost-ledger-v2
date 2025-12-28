@@ -19,7 +19,7 @@ export default async function handler(
     }
 
     // 1. Load the compilation data
-    const compPath = path.join(process.cwd(), "public", "hello_compData.json");
+    const compPath = path.join(process.cwd(), "public", "Challenge3_compData.json");
     const raw = fs.readFileSync(compPath, "utf8");
     const comp = JSON.parse(raw);
     const compilerInput = JSON.parse(comp.compilerInput);

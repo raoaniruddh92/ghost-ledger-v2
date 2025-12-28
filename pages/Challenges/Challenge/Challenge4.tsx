@@ -8,7 +8,7 @@ import { publicClient } from "@/utils/client";
 import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
-const STORAGE_KEY = "challenge3_contract_address";
+const STORAGE_KEY = "challenge4_contract_address";
 
 export default function Challenge4() {
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();

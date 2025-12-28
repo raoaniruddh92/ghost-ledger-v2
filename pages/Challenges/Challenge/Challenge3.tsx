@@ -146,7 +146,7 @@ const hash = await walletClient.deployContract({
  await new Promise((resolve) => setTimeout(resolve, 5_000));
 
     // --- 4. Call verification API ---
-    const res = await fetch("/api/verify2", {
+    const res = await fetch("/api/verify3", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: contractAddress }),
@@ -203,7 +203,7 @@ const hash = await walletClient.deployContract({
 pragma solidity ^0.8.13;
 
 contract Challenge {
-    address public immutable TARGET = 0x5007ac414Fd733ecE18AA057598969370921CA4A;
+    address public immutable TARGET = 0x32E4D1CfAbE68Ae8192DE49B1E1d1C6Cb4c4c1E5;
 
     uint256 public immutable STARTING_BALANCE;
 
