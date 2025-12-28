@@ -59,7 +59,7 @@ export default function Challenge1() {
       const result = await publicClient.readContract({
         address: address as `0x${string}`,
         abi: abi,
-        functionName: "isComplete",
+        functionName: "isSolved",
       });
 
       if (result === true) {

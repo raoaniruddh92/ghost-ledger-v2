@@ -29,13 +29,13 @@ export default function Challenge_Home() {
 
                 <p>Challenge 3</p>
     <button type="button" onClick={() => router.push('/Challenges/Challenge/Challenge3')}>
-        Click me to go to challenge 2
+        Click me to go to challenge 3
       </button>
 
 
                 <p>Challenge 4</p>
     <button type="button" onClick={() => router.push('/Challenges/Challenge/Challenge4')}>
-        Click me to go to challenge 2
+        Click me to go to challenge 4
       </button>
     </div>
   )
