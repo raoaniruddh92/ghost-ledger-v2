@@ -37,6 +37,16 @@ export default function Challenge_Home() {
     <button type="button" onClick={() => router.push('/Challenges/Challenge/Challenge4')}>
         Click me to go to challenge 4
       </button>
+
+                      <p>Challenge 5</p>
+    <button type="button" onClick={() => router.push('/Challenges/Challenge/Challenge5')}>
+        Click me to go to challenge 5
+      </button>
+
+                      <p>Challenge 6</p>
+    <button type="button" onClick={() => router.push('/Challenges/Challenge/Challenge6')}>
+        Click me to go to challenge 6
+      </button>
     </div>
   )
 }
