@@ -3,14 +3,14 @@
 import { useRef, useState, useEffect } from "react";
 import { useConnectWallet, useNotifications } from "@web3-onboard/react";
 import { useRouter } from "next/router";
-import { Challenges4abi as abi, Challenges4bytecode as bytecode} from "../../../utils/abi";
+import { Challenges5abi as abi, Challenges5bytecode as bytecode} from "../../../utils/abi";
 import { publicClient } from "@/utils/client";
 import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
-const STORAGE_KEY = "challenge4_contract_address";
+const STORAGE_KEY = "challenge5_contract_address";
 
-export default function Challenge4() {
+export default function Challenge5() {
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
   const [, customNotification] = useNotifications();
   const notifyController = useRef<{
@@ -145,7 +145,7 @@ const hash = await walletClient.deployContract({
  await new Promise((resolve) => setTimeout(resolve, 5_000));
 
     // --- 4. Call verification API ---
-    const res = await fetch("/api/verify4", {
+    const res = await fetch("/api/verify5", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: contractAddress }),
@@ -195,22 +195,22 @@ const hash = await walletClient.deployContract({
       <h1>Challenge 4</h1>
 
       <h2>Mission Objective</h2>
-      <p>Guess the random number ;*</p>
+      <p>The number is now generated on-demand when a guess is made.</p>
 <p>Your contract code</p>
 <pre className="bg-gray-900 text-green-300 p-4 rounded">
-{`// SPDX-License-Identifier: UNLICENSED
+{`pragma solidity ^0.8.21;
 
-pragma solidity ^0.8.21;
-
-contract GuessTheNumberChallenge {
-    uint8 answer = *redacted*;
-    bool issolved=false;
+contract GuessTheSecretNumberChallenge {
+    bytes32 answerHash = 0xdb81b4d58595fbbbb592d3661a34cdca14d7ab379441400cbfa1b78bc447c365;
+    bool completed=false;    
     function isComplete() public view returns (bool) {
-        return issolved;
+        return completed;
     }
+
     function guess(uint8 n) public payable {
-        if (n==answer){
-            issolved=true;
+
+        if (keccak256(n) == answerHash) {
+            completed=true;
         }
     }
 }

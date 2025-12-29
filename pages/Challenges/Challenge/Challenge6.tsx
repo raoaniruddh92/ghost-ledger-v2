@@ -3,14 +3,14 @@
 import { useRef, useState, useEffect } from "react";
 import { useConnectWallet, useNotifications } from "@web3-onboard/react";
 import { useRouter } from "next/router";
-import { Challenges4abi as abi, Challenges4bytecode as bytecode} from "../../../utils/abi";
+import { Challenges6abi as abi, Challenges6bytecode as bytecode} from "../../../utils/abi";
 import { publicClient } from "@/utils/client";
 import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
-const STORAGE_KEY = "challenge4_contract_address";
+const STORAGE_KEY = "challenge6_contract_address";
 
-export default function Challenge4() {
+export default function Challenge6() {
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
   const [, customNotification] = useNotifications();
   const notifyController = useRef<{
@@ -145,7 +145,7 @@ const hash = await walletClient.deployContract({
  await new Promise((resolve) => setTimeout(resolve, 5_000));
 
     // --- 4. Call verification API ---
-    const res = await fetch("/api/verify4", {
+    const res = await fetch("/api/verify6", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: contractAddress }),
@@ -192,25 +192,40 @@ const hash = await walletClient.deployContract({
         {connecting ? "Connecting..." : wallet ? "Disconnect" : "Connect"}
       </button>
 
-      <h1>Challenge 4</h1>
+      <h1>Challenge 6</h1>
 
       <h2>Mission Objective</h2>
-      <p>Guess the random number ;*</p>
+      <p>This time, you have to lock in your guess before the random number is generated. To give you a sporting chance, there are only ten possible answers.
+
+            Note that it is indeed possible to solve this challenge without losing any ether.
+      </p>
 <p>Your contract code</p>
 <pre className="bg-gray-900 text-green-300 p-4 rounded">
-{`// SPDX-License-Identifier: UNLICENSED
+{`pragma solidity ^0.8.21;
 
-pragma solidity ^0.8.21;
+contract PredictTheFutureChallenge {
+    address guesser;
+    uint8 guess;
+    uint256 settlementBlockNumber;
+    bool iscomplete;
 
-contract GuessTheNumberChallenge {
-    uint8 answer = *redacted*;
-    bool issolved=false;
     function isComplete() public view returns (bool) {
-        return issolved;
+        return iscomplete;
     }
-    function guess(uint8 n) public payable {
-        if (n==answer){
-            issolved=true;
+
+    function lockInGuess(uint8 n) public payable {
+        guesser = msg.sender;
+        guess = n;
+        settlementBlockNumber = block.number + 1;
+    }
+
+    function settle() public {
+        require(msg.sender == guesser);
+        require(block.number > settlementBlockNumber);
+
+        uint8 answer = uint8(uint256(keccak256(abi.encodePacked(blockhash(block.number - 1), block.timestamp)))) % 10;
+        if (answer==guess){
+            iscomplete=true;
         }
     }
 }
