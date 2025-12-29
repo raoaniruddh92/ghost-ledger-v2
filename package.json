@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@nomicfoundation/hardhat-verify": "^3.0.8",
+    "@vercel/analytics": "^1.6.1",
     "@web3-onboard/core": "^2.24.1",
     "@web3-onboard/injected-wallets": "^2.11.3",
     "@web3-onboard/metamask": "^2.2.1",

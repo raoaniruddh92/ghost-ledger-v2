@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app'
 import { Web3OnboardProvider, init } from '@web3-onboard/react'
 import metamaskSDK from '@web3-onboard/metamask'
+import { Analytics } from '@vercel/analytics/next'
 import ChainWrapper from './ChainWrapper'
 
 const metamaskSDKWallet = metamaskSDK({
@@ -53,6 +54,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <Web3OnboardProvider web3Onboard={web3Onboard}>
       <ChainWrapper>
       <Component {...pageProps} />
+      <Analytics />
       </ChainWrapper>
     </Web3OnboardProvider>
   )
