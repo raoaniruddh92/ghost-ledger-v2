@@ -3,90 +3,64 @@
 import { useRef, useState, useEffect } from "react";
 import { useConnectWallet, useNotifications } from "@web3-onboard/react";
 import { useRouter } from "next/router";
-import { Challenges2abi as abi, Challenges2bytecode as bytecode} from "../../../utils/abi";
+import { Challenges2abi as abi, Challenges2bytecode as bytecode } from "../../../utils/abi";
 import { publicClient } from "@/utils/client";
 import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
 const STORAGE_KEY = "challenge2_contract_address";
 
-export default function Challenge1() {
+export default function Challenge2() {
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
   const [, customNotification] = useNotifications();
-  const notifyController = useRef<{
-    update: Function;
-    dismiss: Function;
-  } | null>(null);
+  const notifyController = useRef<any>(null);
 
   const [address, setAddress] = useState<string | null>(null);
   const [deploying, setDeploying] = useState(false);
   const router = useRouter();
 
-  // --- Persistence Logic ---
-
-  // 1. Load address from localStorage on initial mount
   useEffect(() => {
-    const savedAddress = localStorage.getItem(STORAGE_KEY);
-    if (savedAddress) {
-      setAddress(savedAddress);
-    }
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) setAddress(saved);
   }, []);
 
-  // 2. Save address to localStorage whenever it changes
   useEffect(() => {
-    if (address) {
-      localStorage.setItem(STORAGE_KEY, address);
-    }
+    if (address) localStorage.setItem(STORAGE_KEY, address);
   }, [address]);
 
   async function solve() {
     if (!address) {
-      customNotification({
-        type: "error",
-        message: "No contract deployed yet",
-        autoDismiss: 4000,
-      });
+      customNotification({ type: "error", message: "No active target", autoDismiss: 4000 });
       return;
     }
 
     try {
       notifyController.current = customNotification({
         type: "pending",
-        message: "Checking solution...",
+        message: "Running verification...",
         autoDismiss: 0,
       });
 
       const result = await publicClient.readContract({
         address: address as `0x${string}`,
-        abi: abi,
+        abi,
         functionName: "isComplete",
       });
 
-      if (result === true) {
-        notifyController.current.update({
-          type: "success",
-          message: "Challenge solved! ✅",
-          autoDismiss: 5000,
-        });
+      notifyController.current.update({
+        type: result ? "success" : "error",
+        message: result ? "Exploit successful ✅" : "Exploit failed ❌",
+        autoDismiss: 5000,
+      });
 
-        // 3. Clear storage only after successful completion
+      if (result) {
         localStorage.removeItem(STORAGE_KEY);
         setAddress(null);
-
-        // optional: redirect to next challenge
-        // router.push("/challenges/2")
-      } else {
-        notifyController.current.update({
-          type: "error",
-          message: "Challenge not solved yet ❌",
-          autoDismiss: 5000,
-        });
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       notifyController.current?.update({
         type: "error",
-        message: "Failed to check solution",
+        message: "Verification failed",
         autoDismiss: 5000,
       });
     }
@@ -94,11 +68,7 @@ export default function Challenge1() {
 
   async function deploy() {
     if (!wallet?.provider) {
-      customNotification({
-        type: "error",
-        message: "Please connect your wallet first",
-        autoDismiss: 4000,
-      });
+      customNotification({ type: "error", message: "Wallet not connected", autoDismiss: 4000 });
       return;
     }
 
@@ -112,67 +82,48 @@ export default function Challenge1() {
 
       const [account] = await walletClient.getAddresses();
 
-const feeData = await publicClient.estimateFeesPerGas();
-
-const maxFeePerGas =
-  (feeData.maxFeePerGas! * BigInt(130)) / BigInt(100);
-
-const maxPriorityFeePerGas =
-  (feeData.maxPriorityFeePerGas! * BigInt(130)) / BigInt(100);
-
-const hash = await walletClient.deployContract({
-  abi,
-  account,
-  bytecode: bytecode as `0x${string}`,
-  maxFeePerGas,
-  maxPriorityFeePerGas,
-});
+      const feeData = await publicClient.estimateFeesPerGas();
+      const maxFeePerGas = (feeData.maxFeePerGas! * BigInt(130)) / BigInt(100);
+      const maxPriorityFeePerGas = (feeData.maxPriorityFeePerGas! * BigInt(130)) / BigInt(100);
 
       notifyController.current = customNotification({
         type: "pending",
-        message: "Deploying contract...",
+        message: "Deploying target...",
         autoDismiss: 0,
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const hash = await walletClient.deployContract({
+        abi,
+        account,
+        bytecode: bytecode as `0x${string}`,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      });
 
-      if (!receipt.contractAddress) {
-        throw new Error("Deployment failed: no contract address");
-      }
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (!receipt.contractAddress) throw new Error();
 
       setAddress(receipt.contractAddress);
-     const contractAddress = receipt.contractAddress;
 
- await new Promise((resolve) => setTimeout(resolve, 5_000));
+      await new Promise((r) => setTimeout(r, 5000));
 
-    // --- 4. Call verification API ---
-    const res = await fetch("/api/verify2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address: contractAddress }),
-    });
+      const res = await fetch("/api/verify2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: receipt.contractAddress }),
+      });
 
-    if (!res.ok) {
-      throw new Error(`Verification request failed (${res.status})`);
-    }
+      if (!res.ok) throw new Error();
+      const data = await res.json();
 
-    const data = await res.json();
-
-    if (!data.success) {
-      console.warn("Contract verification failed:", data);
-      notifyController.current?.update({
-        type: "warning",
-        message: "Contract deployed, but verification failed.",
+      notifyController.current.update({
+        type: data.success ? "success" : "warning",
+        message: data.success
+          ? "Target deployed and verified"
+          : "Deployed, verification failed",
         autoDismiss: 6000,
       });
-    }
-    notifyController.current.update({
-        type: "success",
-        message: "Contract deployed successfully!",
-        autoDismiss: 5000,
-      });
-    } catch (err) {
-      console.error(err);
+    } catch {
       notifyController.current?.update({
         type: "error",
         message: "Deployment failed",
@@ -184,21 +135,33 @@ const hash = await walletClient.deployContract({
   }
 
   return (
-    <div style={{ padding: "20px" }}>
-      {/* Wallet connect */}
-      <button
-        disabled={connecting}
-        onClick={() => (wallet ? disconnect(wallet) : connect())}
-      >
-        {connecting ? "Connecting..." : wallet ? "Disconnect" : "Connect"}
-      </button>
+    <div className="terminal">
+      <div className="scanlines" />
 
-      <h1>Challenge 2</h1>
+      <div className="window">
+        <div className="header">
+          <span className="dot red" />
+          <span className="dot yellow" />
+          <span className="dot green" />
+          <span className="title">ghost@ledger:/challenge_2</span>
+        </div>
 
-      <h2>Mission Objective</h2>
-      <p> Deploy the challenge smart contract on Sepolia Network and call the function .</p>
-<p>Your contract code</p>
-<pre className="bg-gray-900 text-green-300 p-4 rounded">
+        <div className="content">
+          <p><span className="prompt">$</span> load_mission challenge_2</p>
+
+          <pre className="block">
+{`OBJECTIVE:
+• Deploy target contract
+• Invoke callme()
+• Confirm isComplete == true
+
+NETWORK: SEPOLIA
+DIFFICULTY: EASY
+`}
+          </pre>
+
+          <p className="codeTitle">Target Source:</p>
+          <pre className="codeBlock">
 {`pragma solidity ^0.8.0;
 
 contract CallMeChallenge {
@@ -208,36 +171,152 @@ contract CallMeChallenge {
         isComplete = true;
     }
 }`}
-</pre>
+          </pre>
 
+          <button className="command" disabled={connecting} onClick={() => wallet ? disconnect(wallet) : connect()}>
+            $ {connecting ? "connecting..." : wallet ? "wallet disconnect" : "wallet connect"}
+          </button>
 
-      {/* Deploy button */}
-      <button
-        onClick={deploy}
-        disabled={!wallet || deploying}
-        style={{ marginTop: "12px" }}
-      >
-        {deploying ? "Deploying..." : "Deploy"}
-      </button>
+          <button className="command" disabled={!wallet || deploying} onClick={deploy}>
+            $ {deploying ? "deploying target..." : "deploy target"}
+          </button>
 
-      <button
-        onClick={solve}
-        disabled={!address}
-        style={{ marginTop: "12px", marginLeft: "8px" }}
-      >
-        Check Solution
-      </button>
+          <button className="command" disabled={!address} onClick={solve}>
+            $ verify exploit
+          </button>
 
-      {/* Deployed address display */}
-      {address && (
-        <div style={{ marginTop: "16px", padding: "10px", backgroundColor: "#f4f4f4", borderRadius: "8px" }}>
-          <strong>Active Contract Address:</strong>
-          <code style={{ display: "block", marginTop: "4px", wordBreak: "break-all" }}>
-            {address}
-          </code>
-          <small style={{ color: "gray" }}>This address is saved and will persist if you refresh.</small>
+          {address && (
+            <div className="output">
+              <p><span className="prompt">$</span> active_target</p>
+              <code>{address}</code>
+              <small>persisted locally</small>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      <style jsx>{`
+        .terminal {
+          min-height: 100vh;
+          background: #05070a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'JetBrains Mono', monospace;
+          color: #cbd5f5;
+          position: relative;
+        }
+
+        .scanlines {
+          position: absolute;
+          inset: 0;
+          background: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.03),
+            rgba(255,255,255,0.03) 1px,
+            transparent 1px,
+            transparent 3px
+          );
+          pointer-events: none;
+        }
+
+        .window {
+          width: 95%;
+          max-width: 950px;
+          background: #020617;
+          border: 1px solid #1e293b;
+          box-shadow: 0 0 40px rgba(56,189,248,0.25);
+        }
+
+        .header {
+          padding: 10px 14px;
+          display: flex;
+          gap: 8px;
+          border-bottom: 1px solid #1e293b;
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .red { background: #ef4444; }
+        .yellow { background: #eab308; }
+        .green { background: #22c55e; }
+
+        .title {
+          margin-left: auto;
+          font-size: 0.8rem;
+          color: #64748b;
+        }
+
+        .content {
+          padding: 24px;
+        }
+
+        .prompt { color: #22c55e; }
+
+        .block {
+          background: #020617;
+          border: 1px solid #1e293b;
+          padding: 14px;
+          font-size: 0.8rem;
+          color: #94a3b8;
+          margin: 16px 0;
+        }
+
+        .codeTitle {
+          font-size: 0.8rem;
+          color: #64748b;
+          margin-bottom: 6px;
+        }
+
+        .codeBlock {
+          background: #020617;
+          border: 1px dashed #1e293b;
+          padding: 14px;
+          font-size: 0.8rem;
+          color: #22c55e;
+          margin-bottom: 20px;
+        }
+
+        .command {
+          display: block;
+          width: 100%;
+          margin-bottom: 10px;
+          background: transparent;
+          border: 1px solid #38bdf8;
+          color: #38bdf8;
+          padding: 10px;
+          font-family: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .command:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .command:hover:not(:disabled) {
+          background: rgba(56,189,248,0.1);
+          box-shadow: 0 0 20px rgba(56,189,248,0.4);
+        }
+
+        .output {
+          margin-top: 16px;
+          background: #020617;
+          border: 1px dashed #1e293b;
+          padding: 12px;
+        }
+
+        code {
+          display: block;
+          word-break: break-all;
+          color: #38bdf8;
+          margin-top: 6px;
+        }
+
+        small {
+          color: #64748b;
+        }
+      `}</style>
     </div>
   );
 }
